@@ -9,10 +9,7 @@ from rdflib.plugins.serializers.turtle import VERB
 
 from rdflib.term import BNode, Literal
 
-try:
-    from collections import defaultdict
-except ImportError:
-    from rdflib.compatibility import defaultdict
+from rdflib.compat import defaultdict
 
 
 __all__ = ['TrigSerializer']
