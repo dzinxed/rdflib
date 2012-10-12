@@ -368,19 +368,23 @@ class Graph(Node):
 
     def add(self, (s, p, o)):
         """Add a triple with self as context"""
-        assert isinstance(s,Node), "Subject %s must be an rdflib term" % s
-        assert isinstance(p,Node), "Predicate %s must be an rdflib term" % p
-        assert isinstance(o,Node), "Object %s must be an rdflib term" % o
+        assert isinstance(s,Node), "Subject %s must be an rdflib term" % (s,)
+        assert isinstance(p,Node), "Predicate %s must be an rdflib term" % (p,)
+        assert isinstance(o,Node), "Object %s must be an rdflib term" % (o,)
         self.__store.add((s, p, o), self, quoted=False)
 
     def addN(self, quads):
         """Add a sequence of triple with context"""
-        assert isinstance(s,Node), "Subject %s must be an rdflib term" % s
-        assert isinstance(p,Node), "Predicate %s must be an rdflib term" % p
-        assert isinstance(o,Node), "Object %s must be an rdflib term" % o
+        def assertnode(t): 
+            assert isinstance(t,Node), 'Term %s but be an rdflib term' % (t,)
+            return True
+
         self.__store.addN((s, p, o, c) for s, p, o, c in quads
-                                        if isinstance(c, Graph)
-                                        and c.identifier is self.identifier)
+                          if isinstance(c, Graph)
+                          and c.identifier is self.identifier
+                          and assertnode(s)
+                          and assertnode(p)
+                          and assertnode(o))
 
     def remove(self, (s, p, o)):
         """Remove a triple from the graph
@@ -684,7 +688,7 @@ class Graph(Node):
                 yield item
             list = self.value(list, RDF.rest)
 
-    def transitiveClosure(self,func,arg):
+    def transitiveClosure(self, func, arg, seen=None):
         """
         Generates transitive closure of a user-defined
         function against the graph
@@ -719,9 +723,14 @@ class Graph(Node):
         [rdflib.term.BNode('baz'), rdflib.term.BNode('bar'), rdflib.term.BNode('foo')]
 
         """
+        if seen is None:
+            seen = {}
+        elif arg in seen:
+            return
+        seen[arg] = 1
         for rt in func(arg,self):
             yield rt
-            for rt_2 in self.transitiveClosure(func, rt):
+            for rt_2 in self.transitiveClosure(func, rt, seen):
                 yield rt_2
 
     def transitive_objects(self, subject, property, remember=None):
@@ -915,9 +924,9 @@ class Graph(Node):
         """
         """
         if hasattr(self.store, "query") and use_store_provided:
-            try: 
-                return self.store.query(self, query_object, initNs, initBindings, **kwargs)
-            except NotImplemented:
+            try:
+                return self.store.query(query_object, initNs, initBindings, self.context_aware and self.identifier or '__UNION__', **kwargs)
+            except NotImplementedError:
                 pass # store has no own implementation
 
         if not isinstance(result, query.Result):

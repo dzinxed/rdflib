@@ -4,6 +4,11 @@ import os.path
 
 import rdflib
 
+"""
+Test module naming conventions
+
+modules should all be lower-case initial
+"""
 
 class A(unittest.TestCase):
 
